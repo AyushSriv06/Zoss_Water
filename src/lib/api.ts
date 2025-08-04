@@ -163,4 +163,41 @@ export const adminAPI = {
     api.get(`/users/all?page=${page}&limit=${limit}`),
 };
 
+// Inventory API
+export const inventoryAPI = {
+  getAllInventory: (params?: { category?: string; search?: string }) =>
+    api.get('/inventory', { params }),
+  
+  getInventoryByCategory: (category: string) =>
+    api.get(`/inventory/category/${category}`),
+  
+  getLowStockItems: () =>
+    api.get('/inventory/low-stock'),
+  
+  getInventoryStats: () =>
+    api.get('/inventory/stats'),
+  
+  addInventoryItem: (data: {
+    itemName: string;
+    category: 'machines' | 'materials';
+    description?: string;
+    quantity?: number;
+    unit?: string;
+    minStockLevel?: number;
+    price?: number;
+    supplier?: string;
+    location?: string;
+  }) =>
+    api.post('/inventory', data),
+  
+  updateInventoryQuantity: (id: string, data: { action: 'add' | 'subtract'; quantity: number }) =>
+    api.patch(`/inventory/${id}/quantity`, data),
+  
+  updateInventoryItem: (id: string, data: any) =>
+    api.put(`/inventory/${id}`, data),
+  
+  deleteInventoryItem: (id: string) =>
+    api.delete(`/inventory/${id}`),
+};
+
 export default api;

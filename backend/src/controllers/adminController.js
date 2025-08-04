@@ -2,6 +2,7 @@ const AdminUpdate = require('../models/AdminUpdate');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Service = require('../models/Service');
+const Inventory = require('../models/Inventory');
 
 // Get all admin updates (product templates)
 const getAdminUpdates = async (req, res, next) => {
@@ -133,6 +134,11 @@ const getDashboardStats = async (req, res, next) => {
       createdAt: { $gte: thirtyDaysAgo }
     });
 
+    // Inventory statistics
+    const lowStockItems = await Inventory.countDocuments({
+      $expr: { $lt: ['$quantity', '$minStockLevel'] }
+    });
+
     res.json({
       success: true,
       data: {
@@ -140,7 +146,8 @@ const getDashboardStats = async (req, res, next) => {
         totalProducts,
         pendingApprovals,
         overdueServices,
-        recentUsers
+        recentUsers,
+        lowStockItems
       }
     });
   } catch (error) {

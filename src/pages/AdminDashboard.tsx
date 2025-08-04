@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { adminAPI, productsAPI, servicesAPI } from '@/lib/api';
+import { adminAPI, productsAPI, servicesAPI, inventoryAPI } from '@/lib/api';
 import { toast } from 'sonner';
 import { 
   Users, 
@@ -21,7 +21,10 @@ import {
   Calendar,
   TrendingUp,
   Clock,
-  Wrench
+  Wrench,
+  Minus,
+  Search,
+  Warehouse
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -99,6 +102,21 @@ interface Service {
   lastServiceDate?: string;
 }
 
+interface InventoryItem {
+  _id: string;
+  itemName: string;
+  category: 'machines' | 'materials';
+  description?: string;
+  quantity: number;
+  unit: string;
+  minStockLevel: number;
+  price?: number;
+  supplier?: string;
+  location?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -122,6 +140,24 @@ const AdminDashboard = () => {
   });
   const [userServices, setUserServices] = useState<Service[]>([]);
   const [userServicesLoading, setUserServicesLoading] = useState(false);
+
+  // Inventory state
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'machines' | 'materials' | 'all'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddInventoryDialog, setShowAddInventoryDialog] = useState(false);
+  const [newInventoryItem, setNewInventoryItem] = useState({
+    itemName: '',
+    category: 'machines' as 'machines' | 'materials',
+    description: '',
+    quantity: 0,
+    unit: 'pieces',
+    minStockLevel: 10,
+    price: 0,
+    supplier: '',
+    location: ''
+  });
 
   const [newProduct, setNewProduct] = useState({
     customerEmail: '',
@@ -330,6 +366,76 @@ const AdminDashboard = () => {
     }
   };
 
+  // Inventory functions
+  const fetchInventory = async () => {
+    try {
+      setInventoryLoading(true);
+      const params: any = {};
+      if (selectedCategory !== 'all') {
+        params.category = selectedCategory;
+      }
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      
+      const response = await inventoryAPI.getAllInventory(params);
+      setInventory(response.data.data.inventory);
+    } catch (error) {
+      toast.error('Failed to load inventory');
+    } finally {
+      setInventoryLoading(false);
+    }
+  };
+
+  const handleAddInventoryItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await inventoryAPI.addInventoryItem(newInventoryItem);
+      toast.success('Inventory item added successfully');
+      setShowAddInventoryDialog(false);
+      setNewInventoryItem({
+        itemName: '',
+        category: 'machines',
+        description: '',
+        quantity: 0,
+        unit: 'pieces',
+        minStockLevel: 10,
+        price: 0,
+        supplier: '',
+        location: ''
+      });
+      fetchInventory();
+    } catch (error) {
+      toast.error('Failed to add inventory item');
+    }
+  };
+
+  const handleUpdateQuantity = async (itemId: string, action: 'add' | 'subtract', quantity: number) => {
+    try {
+      await inventoryAPI.updateInventoryQuantity(itemId, { action, quantity });
+      toast.success(`Quantity ${action === 'add' ? 'added' : 'subtracted'} successfully`);
+      fetchInventory();
+    } catch (error) {
+      toast.error('Failed to update quantity');
+    }
+  };
+
+  const handleDeleteInventoryItem = async (itemId: string) => {
+    if (window.confirm('Are you sure you want to delete this item?')) {
+      try {
+        await inventoryAPI.deleteInventoryItem(itemId);
+        toast.success('Item deleted successfully');
+        fetchInventory();
+      } catch (error) {
+        toast.error('Failed to delete item');
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchInventory();
+  }, [selectedCategory, searchQuery]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zoss-cream flex items-center justify-center">
@@ -378,8 +484,8 @@ const AdminDashboard = () => {
               <div className="flex items-center">
                 <AlertTriangle className="h-8 w-8 text-yellow-500" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-zoss-gray">Pending Approvals</p>
-                  <p className="text-2xl font-bold text-zoss-blue">{stats?.pendingApprovals || 0}</p>
+                  <p className="text-sm font-medium text-zoss-gray">Low Stock Items</p>
+                  <p className="text-2xl font-bold text-zoss-blue">{stats?.lowStockItems || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -413,7 +519,7 @@ const AdminDashboard = () => {
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">Users & Products</TabsTrigger>
-            <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
+            <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
             <TabsTrigger value="templates">Product Templates</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
           </TabsList>
@@ -657,31 +763,241 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="approvals" className="space-y-6">
+          <TabsContent value="inventory" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Products Pending Approval</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center space-x-2">
+                    <Warehouse className="h-5 w-5 text-zoss-green" />
+                    <span>Inventory Management</span>
+                  </CardTitle>
+                  <Dialog open={showAddInventoryDialog} onOpenChange={setShowAddInventoryDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-zoss-green hover:bg-zoss-green/90">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Item
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Add New Inventory Item</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleAddInventoryItem} className="space-y-4">
+                        <div>
+                          <Label htmlFor="itemName">Item Name</Label>
+                          <Input
+                            id="itemName"
+                            value={newInventoryItem.itemName}
+                            onChange={(e) => setNewInventoryItem({...newInventoryItem, itemName: e.target.value})}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="category">Category</Label>
+                          <Select 
+                            value={newInventoryItem.category} 
+                            onValueChange={(value: 'machines' | 'materials') => 
+                              setNewInventoryItem({...newInventoryItem, category: value})
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="machines">Machines</SelectItem>
+                              <SelectItem value="materials">Materials</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="description">Description (optional)</Label>
+                          <Input
+                            id="description"
+                            value={newInventoryItem.description}
+                            onChange={(e) => setNewInventoryItem({...newInventoryItem, description: e.target.value})}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="quantity">Initial Quantity</Label>
+                            <Input
+                              id="quantity"
+                              type="number"
+                              value={newInventoryItem.quantity}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, quantity: parseInt(e.target.value)})}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="unit">Unit</Label>
+                            <Input
+                              id="unit"
+                              value={newInventoryItem.unit}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, unit: e.target.value})}
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="minStockLevel">Min Stock Level</Label>
+                            <Input
+                              id="minStockLevel"
+                              type="number"
+                              value={newInventoryItem.minStockLevel}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, minStockLevel: parseInt(e.target.value)})}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="price">Price (optional)</Label>
+                            <Input
+                              id="price"
+                              type="number"
+                              value={newInventoryItem.price}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, price: parseFloat(e.target.value)})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="supplier">Supplier (optional)</Label>
+                            <Input
+                              id="supplier"
+                              value={newInventoryItem.supplier}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, supplier: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="location">Location (optional)</Label>
+                            <Input
+                              id="location"
+                              value={newInventoryItem.location}
+                              onChange={(e) => setNewInventoryItem({...newInventoryItem, location: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <Button type="submit" className="w-full bg-zoss-green hover:bg-zoss-green/90">
+                          Add Item
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent>
-                {pendingProducts.length === 0 ? (
-                  <p className="text-center text-zoss-gray py-8">No products pending approval.</p>
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                  <div className="flex-1">
+                    <Label htmlFor="search">Search Items</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="search"
+                        placeholder="Search by item name..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-48">
+                    <Label htmlFor="category">Category</Label>
+                    <Select value={selectedCategory} onValueChange={(value: 'machines' | 'materials' | 'all') => setSelectedCategory(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="machines">Machines</SelectItem>
+                        <SelectItem value="materials">Materials</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Inventory Table */}
+                {inventoryLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zoss-green mx-auto"></div>
+                    <p className="text-sm text-zoss-gray mt-2">Loading inventory...</p>
+                  </div>
+                ) : inventory.length === 0 ? (
+                  <p className="text-center text-zoss-gray py-8">No inventory items found.</p>
                 ) : (
                   <div className="space-y-4">
-                    {pendingProducts.map((product) => (
-                      <div key={product._id} className="p-4 bg-white rounded-lg border">
+                    {inventory.map((item) => (
+                      <div key={item._id} className="p-4 bg-white rounded-lg border">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-zoss-blue">{product.productName}</p>
-                            <p className="text-sm text-zoss-gray">Model: {product.modelNumber}</p>
-                            <p className="text-xs text-zoss-gray">User ID: {product.userId}</p>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <div>
+                                <p className="font-medium text-zoss-blue">{item.itemName}</p>
+                                <p className="text-sm text-zoss-gray">
+                                  {item.description || 'No description'}
+                                </p>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <Badge variant={item.category === 'machines' ? 'default' : 'secondary'}>
+                                    {item.category}
+                                  </Badge>
+                                  <span className="text-sm text-zoss-gray">
+                                    Quantity: <span className={`font-medium ${item.quantity < item.minStockLevel ? 'text-red-500' : 'text-green-600'}`}>
+                                      {item.quantity} {item.unit}
+                                    </span>
+                                  </span>
+                                  {item.price && (
+                                    <span className="text-sm text-zoss-gray">
+                                      Price: ₹{item.price}
+                                    </span>
+                                  )}
+                                </div>
+                                {(item.supplier || item.location) && (
+                                  <div className="text-xs text-zoss-gray mt-1">
+                                    {item.supplier && <span>Supplier: {item.supplier}</span>}
+                                    {item.supplier && item.location && <span> • </span>}
+                                    {item.location && <span>Location: {item.location}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <Button
-                            onClick={() => handleApproveProduct(product._id)}
-                            className="bg-zoss-green hover:bg-zoss-green/90"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Approve
-                          </Button>
+                          
+                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item._id, 'subtract', 1)}
+                                disabled={item.quantity <= 0}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium min-w-[2rem] text-center">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateQuantity(item._id, 'add', 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteInventoryItem(item._id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
