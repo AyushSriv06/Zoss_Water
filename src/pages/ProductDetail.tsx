@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Droplets, Zap, Shield, CheckCircle } from "lucide-react";
-import QuoteForm from "@/components/QuoteForm";
 
 const ProductDetail = () => {
   const { productId } = useParams();
