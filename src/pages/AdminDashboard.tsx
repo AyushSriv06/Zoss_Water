@@ -35,6 +35,7 @@ interface DashboardStats {
   pendingApprovals: number;
   overdueServices: number;
   recentUsers: number;
+  lowStockItems: number;
 }
 
 interface User {
@@ -117,6 +118,19 @@ interface InventoryItem {
   updatedAt: string;
 }
 
+// 1. Add ProductCatalog type
+interface ProductCatalog {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: 'B2C' | 'B2B';
+  imageUrl?: string;
+  features: string[];
+  specifications?: Record<string, string>;
+  brochureUrl?: string;
+}
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [users, setUsers] = useState<User[]>([]);
@@ -177,6 +191,22 @@ const AdminDashboard = () => {
     defaultWarrantyMonths: 12,
     defaultAmcMonths: 12,
     serviceFrequencyDays: 90
+  });
+
+  // 2. Add state for catalog products
+  const [catalogProducts, setCatalogProducts] = useState<ProductCatalog[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [showCatalogDialog, setShowCatalogDialog] = useState(false);
+  const [editCatalogProduct, setEditCatalogProduct] = useState<ProductCatalog | null>(null);
+  const [catalogForm, setCatalogForm] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    category: 'B2C' as 'B2C' | 'B2B',
+    imageUrl: '',
+    features: '',
+    specifications: '',
+    brochureUrl: ''
   });
 
   useEffect(() => {
@@ -436,6 +466,85 @@ const AdminDashboard = () => {
     fetchInventory();
   }, [selectedCategory, searchQuery]);
 
+  // 3. Fetch catalog products
+  const fetchCatalogProducts = async () => {
+    setCatalogLoading(true);
+    try {
+      const res = await fetch('/api/catalog');
+      const data = await res.json();
+      setCatalogProducts(data.data.products);
+    } catch (e) {
+      toast.error('Failed to load catalog products');
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+  useEffect(() => { fetchCatalogProducts(); }, []);
+
+  // 4. Add handlers for add/edit/delete
+  const handleCatalogDialogOpen = (product?: ProductCatalog) => {
+    if (product) {
+      setEditCatalogProduct(product);
+      setCatalogForm({
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category: product.category,
+        imageUrl: product.imageUrl || '',
+        features: (product.features || []).join('\n'),
+        specifications: product.specifications ? Object.entries(product.specifications).map(([k, v]) => `${k}: ${v}`).join('\n') : '',
+        brochureUrl: product.brochureUrl || ''
+      });
+    } else {
+      setEditCatalogProduct(null);
+      setCatalogForm({ name: '', description: '', price: 0, category: 'B2C', imageUrl: '', features: '', specifications: '', brochureUrl: '' });
+    }
+    setShowCatalogDialog(true);
+  };
+  const handleCatalogFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setCatalogForm({ ...catalogForm, [e.target.name]: e.target.value });
+  };
+  const handleCatalogFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const featuresArr = catalogForm.features.split('\n').map(f => f.trim()).filter(Boolean);
+    const specificationsObj: Record<string, string> = {};
+    catalogForm.specifications.split('\n').forEach(line => {
+      const [k, ...rest] = line.split(':');
+      if (k && rest.length) specificationsObj[k.trim()] = rest.join(':').trim();
+    });
+    try {
+      if (editCatalogProduct) {
+        await fetch(`/api/catalog/${editCatalogProduct._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...catalogForm, features: featuresArr, specifications: specificationsObj })
+        });
+        toast.success('Product updated');
+      } else {
+        await fetch('/api/catalog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...catalogForm, features: featuresArr, specifications: specificationsObj })
+        });
+        toast.success('Product added');
+      }
+      setShowCatalogDialog(false);
+      fetchCatalogProducts();
+    } catch (e) {
+      toast.error('Failed to save product');
+    }
+  };
+  const handleDeleteCatalogProduct = async (id: string) => {
+    if (!window.confirm('Delete this product?')) return;
+    try {
+      await fetch(`/api/catalog/${id}`, { method: 'DELETE' });
+      toast.success('Product deleted');
+      fetchCatalogProducts();
+    } catch (e) {
+      toast.error('Failed to delete product');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zoss-cream flex items-center justify-center">
@@ -517,11 +626,12 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users">Users & Products</TabsTrigger>
             <TabsTrigger value="inventory">Inventory Management</TabsTrigger>
             <TabsTrigger value="templates">Product Templates</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="catalog">Product Catalog</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="space-y-6">
@@ -1242,6 +1352,109 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
             {/* ... rest of the service management section ... */}
+          </TabsContent>
+
+          <TabsContent value="catalog" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Product Catalog Management</CardTitle>
+                  <Button className="bg-zoss-green hover:bg-zoss-green/90" onClick={() => handleCatalogDialogOpen()}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Product
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {catalogLoading ? (
+                  <div className="text-center py-8">Loading...</div>
+                ) : catalogProducts.length === 0 ? (
+                  <p className="text-center text-zoss-gray py-8">No catalog products found.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {catalogProducts.map(product => (
+                      <Card key={product._id} className="relative">
+                        <CardContent className="p-4">
+                          <img src={product.imageUrl} alt={product.name} className="w-full h-40 object-contain mb-2 bg-gray-50 rounded" />
+                          <h3 className="font-medium text-zoss-blue text-lg">{product.name}</h3>
+                          <p className="text-sm text-zoss-gray mb-2">{product.description}</p>
+                          <div className="text-zoss-green font-bold text-xl mb-2">₹{product.price.toLocaleString()}</div>
+                          <Badge>{product.category}</Badge>
+                          <div className="mt-2 mb-2">
+                            <strong>Features:</strong>
+                            <ul className="list-disc ml-5 text-xs text-zoss-gray">
+                              {product.features.map((f, i) => <li key={i}>{f}</li>)}
+                            </ul>
+                          </div>
+                          {product.specifications && (
+                            <div className="mb-2">
+                              <strong>Specifications:</strong>
+                              <ul className="list-disc ml-5 text-xs text-zoss-gray">
+                                {Object.entries(product.specifications).map(([k, v], i) => <li key={i}><b>{k}:</b> {v}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {product.brochureUrl && (
+                            <div className="mb-2">
+                              <a href={product.brochureUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">Brochure</a>
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            <Button size="sm" variant="outline" onClick={() => handleCatalogDialogOpen(product)}><Edit className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDeleteCatalogProduct(product._id)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Dialog for add/edit */}
+            <Dialog open={showCatalogDialog} onOpenChange={setShowCatalogDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editCatalogProduct ? 'Edit Product' : 'Add Product'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCatalogFormSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" name="name" value={catalogForm.name} onChange={handleCatalogFormChange} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Description</Label>
+                    <Input id="description" name="description" value={catalogForm.description} onChange={handleCatalogFormChange} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Price</Label>
+                    <Input id="price" name="price" type="number" value={catalogForm.price} onChange={handleCatalogFormChange} required />
+                  </div>
+                  <div>
+                    <Label htmlFor="category">Category</Label>
+                    <select id="category" name="category" value={catalogForm.category} onChange={handleCatalogFormChange} className="w-full border rounded p-2">
+                      <option value="B2C">B2C</option>
+                      <option value="B2B">B2B</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="imageUrl">Image URL</Label>
+                    <Input id="imageUrl" name="imageUrl" value={catalogForm.imageUrl} onChange={handleCatalogFormChange} />
+                  </div>
+                  <div>
+                    <Label htmlFor="features">Features (one per line)</Label>
+                    <textarea id="features" name="features" value={catalogForm.features} onChange={handleCatalogFormChange} className="w-full border rounded p-2" rows={4} />
+                  </div>
+                  <div>
+                    <Label htmlFor="specifications">Specifications (key: value per line)</Label>
+                    <textarea id="specifications" name="specifications" value={catalogForm.specifications} onChange={handleCatalogFormChange} className="w-full border rounded p-2" rows={4} />
+                  </div>
+                  <div>
+                    <Label htmlFor="brochureUrl">Brochure URL</Label>
+                    <Input id="brochureUrl" name="brochureUrl" value={catalogForm.brochureUrl} onChange={handleCatalogFormChange} />
+                  </div>
+                  <Button type="submit" className="w-full bg-zoss-green hover:bg-zoss-green/90">{editCatalogProduct ? 'Update' : 'Add'} Product</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
 
