@@ -14,6 +14,7 @@ const productRoutes = require('./routes/productRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
+const productCatalogRoutes = require('./routes/productCatalogRoutes');
 
 // Initialize Express app
 const app = express();
@@ -84,6 +85,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/catalog', productCatalogRoutes);
 
 // 404 handler for undefined routes
 app.use('*', (req, res) => {
