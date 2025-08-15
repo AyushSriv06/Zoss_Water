@@ -470,7 +470,8 @@ const AdminDashboard = () => {
   const fetchCatalogProducts = async () => {
     setCatalogLoading(true);
     try {
-      const res = await fetch('/api/catalog');
+      const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${base}/catalog`);
       const data = await res.json();
       setCatalogProducts(data.data.products);
     } catch (e) {
@@ -513,15 +514,16 @@ const AdminDashboard = () => {
       if (k && rest.length) specificationsObj[k.trim()] = rest.join(':').trim();
     });
     try {
+      const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
       if (editCatalogProduct) {
-        await fetch(`/api/catalog/${editCatalogProduct._id}`, {
+        await fetch(`${base}/catalog/${editCatalogProduct._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...catalogForm, features: featuresArr, specifications: specificationsObj })
         });
         toast.success('Product updated');
       } else {
-        await fetch('/api/catalog', {
+        await fetch(`${base}/catalog`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...catalogForm, features: featuresArr, specifications: specificationsObj })
@@ -537,7 +539,8 @@ const AdminDashboard = () => {
   const handleDeleteCatalogProduct = async (id: string) => {
     if (!window.confirm('Delete this product?')) return;
     try {
-      await fetch(`/api/catalog/${id}`, { method: 'DELETE' });
+      const base = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+      await fetch(`${base}/catalog/${id}`, { method: 'DELETE' });
       toast.success('Product deleted');
       fetchCatalogProducts();
     } catch (e) {

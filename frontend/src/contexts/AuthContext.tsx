@@ -96,7 +96,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`;
+    const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000/api';
+    const rootUrl = backendBase.endsWith('/api') ? backendBase.slice(0, -4) : backendBase;
+    window.location.href = `${rootUrl}/api/auth/google`;
   };
 
   const handleGoogleCallback = (token: string, userData: string) => {
