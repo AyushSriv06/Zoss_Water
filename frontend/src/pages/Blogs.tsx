@@ -158,7 +158,7 @@ const Blogs = () => {
                         Read More →
                       </Link>
                     </CardContent>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
