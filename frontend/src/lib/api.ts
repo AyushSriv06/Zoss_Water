@@ -200,4 +200,41 @@ export const inventoryAPI = {
     api.delete(`/inventory/${id}`),
 };
 
+// Blogs API
+export const blogsAPI = {
+  getAllBlogs: (params?: { subtopic?: string; search?: string; page?: number; limit?: number }) =>
+    api.get('/blogs', { params }),
+  
+  getBlogById: (id: string) =>
+    api.get(`/blogs/${id}`),
+  
+  // Admin only
+  createBlog: (data: {
+    title: string;
+    summary: string;
+    placeholderImage?: string;
+    subtopic: string;
+    content: string;
+    readTime?: string;
+  }) =>
+    api.post('/blogs', data),
+  
+  updateBlog: (id: string, data: {
+    title?: string;
+    summary?: string;
+    placeholderImage?: string;
+    subtopic?: string;
+    content?: string;
+    readTime?: string;
+    isPublished?: boolean;
+  }) =>
+    api.put(`/blogs/${id}`, data),
+  
+  deleteBlog: (id: string) =>
+    api.delete(`/blogs/${id}`),
+  
+  getAllBlogsAdmin: (page = 1, limit = 10) =>
+    api.get(`/blogs/admin/all?page=${page}&limit=${limit}`),
+};
+
 export default api;

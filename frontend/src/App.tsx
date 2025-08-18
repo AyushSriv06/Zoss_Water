@@ -13,6 +13,7 @@ import SubscriptionModel from "./pages/SubscriptionModel";
 import Blogs from "./pages/Blogs";
 import ContactUs from "./pages/ContactUs";
 import ProductDetail from "./pages/ProductDetail";
+import BlogDetail from "./pages/BlogDetail";
 import AuthPage from "./pages/AuthPage";
 import AuthCallback from "./pages/AuthCallback";
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/usage-benefits" element={<UsageBenefits />} />
                 <Route path="/subscription-model" element={<SubscriptionModel />} />
                 <Route path="/blogs" element={<Blogs />} />
+                <Route path="/blogs/:blogId" element={<BlogDetail />} />
                 <Route path="/contact-us" element={<ContactUs />} />
                 <Route path="/product/:productId" element={<ProductDetail />} />
                 <Route path="/auth" element={<AuthPage />} />

@@ -1,13 +1,29 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { blogsAPI } from "@/lib/api";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+
+interface Blog {
+  _id: string;
+  title: string;
+  summary: string;
+  placeholderImage: string;
+  subtopic: string;
+  readTime: string;
+  createdAt: string;
+}
 
 const Blogs = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const categories = [
     { id: "all", name: "All Articles" },
@@ -17,60 +33,44 @@ const Blogs = () => {
     { id: "case-studies", name: "Case Studies" }
   ];
 
-  const blogPosts = [
-    {
-      id: 1,
-      title: "Ayurvedic Hydration: The Science Behind Alkaline Water",
-      excerpt: "Discover how alkaline water aligns with ancient Ayurvedic principles for optimal health and wellness.",
-      category: "ayurvedic",
-      readTime: "5 min read",
-      image: "ayurvedic-placeholder"
-    },
-    {
-      id: 2,
-      title: "How to Calculate Your Office's Carbon Savings with Zoss Water",
-      excerpt: "Learn the environmental impact of switching to ionized water in your workplace and reduce your carbon footprint.",
-      category: "sustainability", 
-      readTime: "3 min read",
-      image: "carbon-placeholder"
-    },
-    {
-      id: 3,
-      title: "Dosha-Specific Hydration Tips for Mumbai Summers",
-      excerpt: "Beat the heat with personalized hydration strategies based on your Ayurvedic constitution.",
-      category: "ayurvedic",
-      readTime: "4 min read", 
-      image: "summer-placeholder"
-    },
-    {
-      id: 4,
-      title: "The Science of Electrolysis: How Ionized Water Works",
-      excerpt: "Understanding the technology behind water ionization and its health benefits.",
-      category: "science",
-      readTime: "6 min read",
-      image: "science-placeholder"
-    },
-    {
-      id: 5,
-      title: "Case Study: TechCorp's 80% Plastic Reduction Journey",
-      excerpt: "How a 200-employee tech company eliminated plastic bottles and saved costs with Zoss Water.",
-      category: "case-studies",
-      readTime: "4 min read",
-      image: "case-study-placeholder"
-    },
-    {
-      id: 6,
-      title: "pH Levels Explained: Finding the Right Balance for Your Health",
-      excerpt: "A comprehensive guide to understanding alkaline water pH levels and their impact on wellness.",
-      category: "science",
-      readTime: "5 min read",
-      image: "ph-placeholder"
-    }
-  ];
+  useEffect(() => {
+    fetchBlogs();
+  }, [selectedCategory, searchTerm]);
 
-  const filteredPosts = selectedCategory === "all" 
-    ? blogPosts 
-    : blogPosts.filter(post => post.category === selectedCategory);
+  const fetchBlogs = async () => {
+    try {
+      setLoading(true);
+      const params: any = {};
+      
+      if (selectedCategory !== "all") {
+        params.subtopic = selectedCategory;
+      }
+      
+      if (searchTerm.trim()) {
+        params.search = searchTerm.trim();
+      }
+      
+      const response = await blogsAPI.getAllBlogs(params);
+      setBlogs(response.data.data.blogs);
+    } catch (error: any) {
+      toast.error('Failed to load blog posts');
+      console.error('Error fetching blogs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getSubtopicLabel = (subtopic: string) => {
+    const labels = {
+      'ayurvedic': 'Ayurvedic Insights',
+      'science': 'Hydration Science',
+      'sustainability': 'Sustainability',
+      'case-studies': 'Case Studies',
+      'wellness': 'Wellness',
+      'technology': 'Technology'
+    };
+    return labels[subtopic as keyof typeof labels] || subtopic;
+  };
 
   return (
     <div className="min-h-screen bg-zoss-cream">
@@ -90,6 +90,17 @@ const Blogs = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <Input
+                type="text"
+                placeholder="Search articles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-2 focus:border-zoss-green"
+              />
+            </div>
+
             {/* Category Filter */}
             <div className="mb-8">
               <div className="flex flex-wrap gap-2">
@@ -110,32 +121,47 @@ const Blogs = () => {
             </div>
 
             {/* Blog Posts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {filteredPosts.map((post) => (
-                <Card key={post.id} className="hover:shadow-lg transition-shadow">
-                  <div className="w-full h-48 bg-gray-200 rounded-t-lg flex items-center justify-center">
-                    <span className="text-gray-500">{post.image}</span>
-                  </div>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Badge variant="outline" className="text-zoss-green border-zoss-green">
-                        {categories.find(cat => cat.id === post.category)?.name}
-                      </Badge>
-                      <span className="text-sm text-zoss-gray">{post.readTime}</span>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-zoss-green" />
+                <span className="ml-2 text-zoss-gray">Loading articles...</span>
+              </div>
+            ) : blogs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-zoss-gray text-lg">No articles found matching your criteria.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {blogs.map((blog) => (
+                  <Card key={blog._id} className="hover:shadow-lg transition-shadow">
+                    <div className="w-full h-48 bg-gray-200 rounded-t-lg overflow-hidden">
+                      <img 
+                        src={blog.placeholderImage} 
+                        alt={blog.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
-                    <h3 className="font-heading text-lg font-semibold text-zoss-blue mb-3 leading-tight">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-zoss-gray mb-4 line-clamp-3">
-                      {post.excerpt}
-                    </p>
-                    <Link to={`/blog/${post.id}`} className="text-zoss-green hover:text-zoss-green/80 text-sm font-medium">
-                      Read More →
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Badge variant="outline" className="text-zoss-green border-zoss-green">
+                          {getSubtopicLabel(blog.subtopic)}
+                        </Badge>
+                        <span className="text-sm text-zoss-gray">{blog.readTime}</span>
+                      </div>
+                      <h3 className="font-heading text-lg font-semibold text-zoss-blue mb-3 leading-tight">
+                        {blog.title}
+                      </h3>
+                      <p className="text-sm text-zoss-gray mb-4 line-clamp-3">
+                        {blog.summary}
+                      </p>
+                      <Link to={`/blogs/${blog._id}`} className="text-zoss-green hover:text-zoss-green/80 text-sm font-medium">
+                        Read More →
+                      </Link>
+                    </CardContent>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -162,13 +188,13 @@ const Blogs = () => {
                 Popular Posts
               </h3>
               <div className="space-y-4">
-                {blogPosts.slice(0, 4).map((post) => (
-                  <div key={post.id} className="border-b border-gray-200 last:border-b-0 pb-3 last:pb-0">
-                    <Link to={`/blog/${post.id}`} className="block">
+                {blogs.slice(0, 4).map((blog) => (
+                  <div key={blog._id} className="border-b border-gray-200 last:border-b-0 pb-3 last:pb-0">
+                    <Link to={`/blogs/${blog._id}`} className="block">
                       <h4 className="text-sm font-medium text-zoss-blue hover:text-zoss-green transition-colors line-clamp-2">
-                        {post.title}
+                        {blog.title}
                       </h4>
-                      <p className="text-xs text-zoss-gray mt-1">{post.readTime}</p>
+                      <p className="text-xs text-zoss-gray mt-1">{blog.readTime}</p>
                     </Link>
                   </div>
                 ))}

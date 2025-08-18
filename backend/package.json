@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "build": "tsc -b",
     "dev": "nodemon src/index.js",
+    "seed:blogs": "node src/seedBlogs.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
