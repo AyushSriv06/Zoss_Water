@@ -71,37 +71,30 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-zoss-cream">
       {/* Hero Section - Modified to show only B2B button */}
-      <section className="relative h-screen overflow-hidden">
-        <div className="absolute inset-0">
-          <img 
-            src="/lovable-uploads/2564214d-1d06-4966-bb14-ae684ab3e3f5.png"
-            alt="Zoss Water - Where Glacier Streams Meet Your Kitchen Sink"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent"></div>
-        </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="max-w-4xl space-y-8 animate-fade-in">
-            <div className="space-y-6">
-              <h1 className="font-heading text-5xl md:text-7xl font-bold leading-tight text-white drop-shadow-2xl tracking-tight">
-                Ionizing Modern Purity with Ancient Wisdom
-              </h1>
-              <h2 className="text-2xl md:text-3xl font-light text-white/95 drop-shadow-lg tracking-wide">
-                Engineered for wellness. Inspired by tradition.
-              </h2>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-6 justify-start items-start pt-4">
-              <Link to="/commercial-b2b">
-                <Button size="lg" className="group bg-gradient-to-r from-zoss-copper via-orange-500 to-amber-500 hover:from-zoss-copper/90 hover:via-orange-500/90 hover:to-amber-500/90 text-white px-12 py-6 text-lg font-semibold tracking-wider rounded-full shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-white/20">
-                  <Sparkles className="mr-3 h-6 w-6 group-hover:rotate-12 transition-transform" />
-                  EXPLORE B2B SOLUTIONS
-                  <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+  {/* Background Image */}
+  <img
+    src="/lovable-uploads/2564214d-1d06-4966-bb14-ae684ab3e3f5.png"
+    alt="Zoss Water - Ionizing Modern Purity"
+    className="absolute inset-0 w-full h-full object-cover"
+  />
+
+  {/* Overlay */}
+  <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+
+  {/* Content */}
+  <div className="relative text-center px-6">
+    <h1 className="text-4xl md:text-6xl font-bold text-white drop-shadow-lg">
+      Ionizing Modern Purity with Ancient Wisdom
+    </h1>
+    <p className="mt-4 text-lg md:text-xl text-gray-200 max-w-2xl mx-auto">
+      Engineered for wellness. Inspired by tradition.
+    </p>
+    <button className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg transition">
+      EXPLORE B2B SOLUTIONS
+    </button>
+  </div>
+</section>
 
       {/* What Is Zoss Water Section */}
       <section className="py-24 bg-white relative overflow-hidden">
@@ -117,7 +110,7 @@ const Index = () => {
               </div>
               
               <div className="space-y-6 text-lg text-zoss-gray leading-relaxed">
-                <p className="text-xl">
+                <p>
                   Zoss Water represents the perfect fusion of cutting-edge electrolysis technology and time-honored Ayurvedic principles. Our advanced ionization systems transform ordinary tap water into alkaline, antioxidant-rich water that supports your body's natural balance and vitality.
                 </p>
                 
@@ -353,7 +346,7 @@ const Index = () => {
                   onClick={calculateCarbonFootprint}
                   className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 text-lg font-semibold"
                 >
-                  Calculate Environmental Impact
+                  Calculate Impact
                 </Button>
                 
                 {carbonResults && (
