@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import ChatBot from "./components/ChatBot";
 import Index from "./pages/Index";
 import UsageBenefits from "./pages/UsageBenefits";
 import SubscriptionModel from "./pages/SubscriptionModel";
@@ -65,6 +66,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
+            <ChatBot />
             <Footer />
           </div>
         </BrowserRouter>
