@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom"; 
 import { Droplets, Leaf, Shield, Users, Award, Calculator, Car, TreePine, Smartphone, ArrowRight, Sparkles, CheckCircle, Star } from "lucide-react";
 import DoshaQuestionnaire from "@/components/DoshaQuestionnaire";
 
@@ -13,6 +14,7 @@ import SubscribePopup from "@/components/SubscribePopup";
 
 
 const Index = () => {
+   const navigate = useNavigate();
   const [selectedDosha, setSelectedDosha] = useState("");
   const [employees, setEmployees] = useState("10");
   const [workingDays, setWorkingDays] = useState("22");
@@ -90,9 +92,12 @@ const Index = () => {
     <p className="mt-4 text-lg md:text-xl text-gray-200 max-w-2xl mx-auto">
       Engineered for wellness. Inspired by tradition.
     </p>
-    <button className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg transition">
-      EXPLORE B2B SOLUTIONS
-    </button>
+          <button
+            className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-full shadow-lg transition"
+            onClick={() => navigate("/commercial-b2b")}
+          >
+            EXPLORE B2B SOLUTIONS
+          </button>
   </div>
 </section>
 
